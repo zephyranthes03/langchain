@@ -1,5 +1,7 @@
 import os
 import bs4
+from dotenv import load_dotenv
+
 from langchain import hub
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
@@ -8,10 +10,13 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+load_dotenv()
+
 os.environ['LANGCHAIN_TRACING_V2'] = 'true'
 os.environ['LANGCHAIN_ENDPOINT'] = 'https://api.smith.langchain.com'
-os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
-os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
+#os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
+#os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
 
 #### INDEXING ####
@@ -141,7 +146,8 @@ splits = text_splitter.split_documents(docs)
 # Embed
 from langchain_community.vectorstores import Chroma
 vectorstore = Chroma.from_documents(documents=splits, 
-                                    embedding=OpenAIEmbeddings())
+                                    embedding=OpenAIEmbeddings(openai_api_key=openai_api_key))
+                                    # embedding=OpenAIEmbeddings())
 
 retriever = vectorstore.as_retriever()
 
