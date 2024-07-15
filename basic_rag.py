@@ -1,5 +1,7 @@
 import os
 import bs4
+from dotenv import load_dotenv
+
 from langchain import hub
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
@@ -8,10 +10,33 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+
+load_dotenv()
+
 os.environ['LANGCHAIN_TRACING_V2'] = 'true'
 os.environ['LANGCHAIN_ENDPOINT'] = 'https://api.smith.langchain.com'
-os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
-os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
+#os.environ['LANGCHAIN_API_KEY'] = os.getenv("LANGCHAIN_API_KEY")
+#os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
+
+#OPENAI_API_KEY가 기본값이라, openai_api_key는 필수가 아님. OpenAIEmbeddings()에서 openai_api_key를 명시할때 필요함.
+#openai_api_key = os.getenv("OPENAI_API_KEY")
+
+
+
+# HuggingFaceBgeEmbeddings를 사용하기 전에 토크나이저 실행이 끝나 있어야 함.
+# 함수나 클래스로 정돈하면 정상 동작할거 같은데... 현재는 테스트 버젼에서는 여전히 경고가 발생함.
+import multiprocessing
+from transformers import AutoTokenizer
+
+def initialize_tokenizer():
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    # 여기서 토크나이저 사용
+
+if __name__ == "__main__":
+    process = multiprocessing.Process(target=initialize_tokenizer)
+    process.start()
+    process.join()
+
 
 
 #### INDEXING ####
@@ -138,10 +163,43 @@ splits = text_splitter.split_documents(docs)
 
 ### Vector Store ###
 
-# Embed
-from langchain_community.vectorstores import Chroma
-vectorstore = Chroma.from_documents(documents=splits, 
-                                    embedding=OpenAIEmbeddings())
+
+
+# # fastembed 적용
+# # pip3 install fastembed -q
+# from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+
+# vectorstore = FAISS.from_documents(
+#     documents=splits, embedding=FastEmbedEmbeddings())
+
+
+
+
+# # FAISS DB 적용
+from langchain_community.vectorstores import FAISS
+
+# vectorstore = FAISS.from_documents(
+#     documents=splits, embedding=OpenAIEmbeddings())
+
+
+# # Chroma DB 적용
+# from langchain_community.vectorstores import Chroma
+
+# vectorstore = Chroma.from_documents(documents=splits, 
+#                                     # embedding=OpenAIEmbeddings(openai_api_key=openai_api_key))
+#                                     embedding=OpenAIEmbeddings())
+
+
+
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+
+# 단계 3: 임베딩 & 벡터스토어 생성(Create Vectorstore)
+# 벡터스토어를 생성합니다.
+vectorstore = FAISS.from_documents(
+    documents=splits, embedding=HuggingFaceBgeEmbeddings()
+)
+
+
 
 retriever = vectorstore.as_retriever()
 
@@ -159,41 +217,6 @@ retriever = vectorstore.as_retriever()
 
 
 
-
-
-
-
-# # fastembed 적용
-# # pip3 install fastembed -q
-# from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
-
-# vectorstore = FAISS.from_documents(
-#     documents=splits, embedding=FastEmbedEmbeddings())
-
-
-
-
-# # FAISS DB 적용
-# from langchain_community.vectorstores import FAISS
-
-# vectorstore = FAISS.from_documents(
-#     documents=splits, embedding=OpenAIEmbeddings())
-
-
-# # Chroma DB 적용
-# from langchain_community.vectorstores import Chroma
-
-# vectorstore = Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
-
-
-
-# from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-
-# # 단계 3: 임베딩 & 벡터스토어 생성(Create Vectorstore)
-# # 벡터스토어를 생성합니다.
-# vectorstore = FAISS.from_documents(
-#     documents=splits, embedding=HuggingFaceBgeEmbeddings()
-# )
 
 
 
