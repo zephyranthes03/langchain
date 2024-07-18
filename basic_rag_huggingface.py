@@ -5,10 +5,26 @@ from dotenv import load_dotenv
 from langchain import hub
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import Chroma, FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai.chat_models import AzureChatOpenAI, ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+# from langchain.docstores import InMemoryDocstore
+# from langchain.index_to_docstore_id import SimpleIndexToDocstoreId
+
+
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+# prompt_model = "google/pegasus-xsum"
+# generator_model = "facebook/bart-large-cnn"
+
+# tokenizer = AutoTokenizer.from_pretrained(prompt_model)
+# model = AutoModelForCausalLM.from_pretrained(generator_model)
+
 
 
 load_dotenv()
@@ -40,21 +56,39 @@ prompt = AutoModelForSeq2SeqLM.from_pretrained(prompt_model)
 generator_tokenizer = AutoTokenizer.from_pretrained(generator_model)
 generator = AutoModelForSeq2SeqLM.from_pretrained(generator_model)
 
+# # Initialize the tokenizer and model for Llama 3
+# tokenizer = AutoTokenizer.from_pretrained("facebook/llama-3")
+# model = AutoModelForCausalLM.from_pretrained("facebook/llama-3")
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+model = AutoModelForCausalLM.from_pretrained("gpt2")
+
+
 # Create pipeline for question answering
 qa_pipeline = pipeline("summarization", model=generator, tokenizer=generator_tokenizer)
 
-def initialize_tokenizer():
-    global tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+# def initialize_tokenizer():
+#     global tokenizer
+#     tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
 # Define post-processing function
 def format_docs(docs):
     return "\n\n".join(doc["page_content"] for doc in docs)
 
+def generate_response(prompt, model, tokenizer, max_new_tokens=50, max_input_length=1024):
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=max_input_length)
+    attention_mask = inputs.attention_mask
+    outputs = model.generate(inputs.input_ids, attention_mask=attention_mask, max_new_tokens=max_new_tokens)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
+
+def rag_chain_simple(question, retriever):
+    docs = retriever.similarity_search(question)
+    return docs
+
 # Chain process
 def rag_chain(question, retriever):
     # Retrieve relevant documents
-    docs = retriever(question)
+    docs = retriever.retrieve(question)
     
     # Format documents
     context = format_docs(docs)
@@ -218,8 +252,7 @@ def rag_func():
 
 
     # # FAISS DB 적용
-    from langchain_community.vectorstores import FAISS
-
+    # from langchain_community.vectorstores import FAISS
     # vectorstore = FAISS.from_documents(
     #     documents=splits, embedding=OpenAIEmbeddings())
 
@@ -232,35 +265,61 @@ def rag_func():
     #                                     embedding=OpenAIEmbeddings())
 
 
-
-    from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-
     # 단계 3: 임베딩 & 벡터스토어 생성(Create Vectorstore)
     # 벡터스토어를 생성합니다.
     vectorstore = FAISS.from_documents(
         documents=splits, embedding=HuggingFaceBgeEmbeddings()
     )
 
-
-
-    retriever = vectorstore.as_retriever()
-
-
-
-
-
-
-
-
     query = "회사의 저출생 정책이 뭐야?"
 
-    retriever = vectorstore.as_retriever(search_type="similarity")
-    search_result = retriever.invoke(query)
-    print(search_result)
+    # retriever = vectorstore.as_retriever()
 
+    # retriever = vectorstore.as_retriever(search_type="similarity")
+    # search_result = retriever.get_relevant_documents(query)
+    # print(search_result)
+
+
+    # Example usage
+    # Retrieve relevant documents
+    retrieved_docs = rag_chain_simple(query, vectorstore)
+
+    print("--------------",flush=True)
+    print(retrieved_docs,flush=True)
+    print("--------------",flush=True)
+    
+    # Generate a prompt combining the query and retrieved documents
+    
+    # prompt = query + "\n\n" + "\n".join([doc['text'] for doc in retrieved_docs])
+    prompt = query + "\n\n" + "\n".join([doc.page_content for doc in retrieved_docs])
+
+    # Truncate prompt if it exceeds max_input_length
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024, padding="max_length")
+    truncated_prompt = tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=True)
+    
+    
+    # Generate response using GPT-2
+    response = generate_response(truncated_prompt, model, tokenizer)
+
+    # response = generate_response(prompt, model, tokenizer)
+    print(response)
+
+    embeddings = HuggingFaceBgeEmbeddings()  # Initialize with appropriate parameters
+    
+    # Create an index using FAISS
+    faiss_index = FAISS.build_index(embeddings)
+    
+    # Create an in-memory docstore
+    docstore = InMemoryDocstore()  # or use a persistent one if needed
+    
+    # Create an index to docstore ID mapping
+    index_to_docstore_id = SimpleIndexToDocstoreId()
+
+    retriever = FAISS(index=faiss_index, docstore=docstore, index_to_docstore_id=index_to_docstore_id)
 
     # Question
-    result = rag_chain("What is Task Decomposition?", retriever)
+    # result = rag_chain(query, retriever)
+    result = rag_chain_simple(query, retriever)
     print(result)
 
 
@@ -291,7 +350,7 @@ def rag_func():
 
     
 if __name__ == "__main__":
-    initialize_tokenizer()
+    # initialize_tokenizer()
     process = multiprocessing.Process(target=rag_func)
     process.start()
     process.join()
