@@ -15,7 +15,8 @@ print(os.getenv("GITHUB_PERSONAL_TOKEN"))
 #ACCESS_TOKEN = getpass(os.getenv("GITHUB_PERSONAL_TOKEN"))
 ACCESS_TOKEN = os.getenv("GITHUB_PERSONAL_TOKEN")
 
-from langchain.document_loaders import GitHubIssuesLoader
+# from langchain.document_loaders import GitHubIssuesLoader
+from langchain_community.document_loaders import GitHubIssuesLoader
 
 loader = GitHubIssuesLoader(
     repo="huggingface/peft",
@@ -33,8 +34,10 @@ splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=30)
 
 chunked_docs = splitter.split_documents(docs)
 
-from langchain.vectorstores import FAISS
-from langchain.embeddings import HuggingFaceEmbeddings
+# from langchain.vectorstores import FAISS
+# from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
 
 db = FAISS.from_documents(chunked_docs,
                           HuggingFaceEmbeddings(model_name='BAAI/bge-base-en-v1.5'))
