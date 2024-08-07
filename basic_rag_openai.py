@@ -21,6 +21,10 @@ os.environ['LANGCHAIN_ENDPOINT'] = 'https://api.smith.langchain.com'
 #OPENAI_API_KEY가 기본값이라, openai_api_key는 필수가 아님. OpenAIEmbeddings()에서 openai_api_key를 명시할때 필요함.
 #openai_api_key = os.getenv("OPENAI_API_KEY")
 
+os.environ['USER_AGENT'] = "Mozilla/5.0 (compatible; MyAppName/1.0; +https://n.news.naver.com)"
+USER_AGENT = os.getenv("USER_AGENT")
+# Retrieve access token from environment variables
+ACCESS_TOKEN = os.getenv('GITHUB_PERSONAL_TOKEN')
 
 
 # HuggingFaceBgeEmbeddings를 사용하기 전에 토크나이저 실행이 끝나 있어야 함.
@@ -127,6 +131,8 @@ loader = WebBaseLoader(
         )
     ),
 )
+
+
 docs = loader.load()
 
 
@@ -201,20 +207,16 @@ vectorstore = Chroma.from_documents(documents=splits,
 
 
 
-retriever = vectorstore.as_retriever()
-
-
-
-
-
+# retriever = vectorstore.as_retriever()
 
 
 
 query = "회사의 저출생 정책이 뭐야?"
 
 retriever = vectorstore.as_retriever(search_type="similarity")
-search_result = retriever.get_relevant_documents(query)
-print(search_result)
+# search_result = retriever.invoke(query)
+
+# print(search_result)
 
 
 
@@ -244,6 +246,6 @@ rag_chain = (
 )
 
 # Question
-rag_chain.invoke("What is Task Decomposition?")
+print(rag_chain.invoke(query))
 
 
