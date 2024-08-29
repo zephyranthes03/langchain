@@ -37,6 +37,11 @@ os.environ['LANGCHAIN_ENDPOINT'] = 'https://api.smith.langchain.com'
 #OPENAI_API_KEY가 기본값이라, openai_api_key는 필수가 아님. OpenAIEmbeddings()에서 openai_api_key를 명시할때 필요함.
 #openai_api_key = os.getenv("OPENAI_API_KEY")
 
+os.environ['USER_AGENT'] = "Mozilla/5.0 (compatible; MyAppName/1.0; +https://n.news.naver.com)"
+USER_AGENT = os.getenv("USER_AGENT")
+# Retrieve access token from environment variables
+ACCESS_TOKEN = os.getenv('GITHUB_PERSONAL_TOKEN')
+
 ## 토크나이저 병렬화 경고 제거용
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
