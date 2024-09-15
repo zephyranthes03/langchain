@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  web:
+    image: python:3.10-slim  # Use an official Python runtime as the base image
+    working_dir: /app
+    volumes:
+      - ./:/app  # Mount the current directory to /app in the container
+    command: python app.py  # Command to run your Python script
+    ports:
+      - "8000:8000"  # Map the container's port 8000 to the host's port 8000
+    depends_on:
+      - redis  # Wait for the redis service to be ready before starting
+
+  mongodb:
+    image: mongo:latest  # Use the MongoDB image from Docker Hub
+    ports:
+      - "27017:27017"  # Map MongoDB's default port to the host
+    volumes:
+      - mongo-data:/data/db  # Persist MongoDB data on a named volume
+      
+  redis:
+    image: "redis:alpine"  # Use the Redis image from Docker Hub
+  
