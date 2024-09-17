@@ -1,24 +1,29 @@
-version: '3.8'
 
 services:
-  web:
-    image: python:3.10-slim  # Use an official Python runtime as the base image
-    working_dir: /app
-    volumes:
-      - ./:/app  # Mount the current directory to /app in the container
-    command: python app.py  # Command to run your Python script
+  bot:
+    build:
+      context: ./test
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"  # Map the container's port 8000 to the host's port 8000
     depends_on:
       - redis  # Wait for the redis service to be ready before starting
+      - mongodb
+    environment:
+      - "TELEGRAM_BOT_KEY={TELEGRAM_BOT_KEY}"
+      - "TELEGRAM_CHAT_IP={TELEGRAM_CHAT_ID}"
 
   mongodb:
-    image: mongo:latest  # Use the MongoDB image from Docker Hub
-    ports:
-      - "27017:27017"  # Map MongoDB's default port to the host
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
     volumes:
-      - mongo-data:/data/db  # Persist MongoDB data on a named volume
-      
+      - mongo-data:./mongo-data  # Docker 볼륨을 MongoDB의 데이터 디렉토리에 마운트합니다.
+
   redis:
     image: "redis:alpine"  # Use the Redis image from Docker Hub
   
+volumes:
+  mongo-data:
